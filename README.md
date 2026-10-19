@@ -7,23 +7,16 @@ An experimental browser-based formant synthesizer. Click and hold anywhere on th
 - Static browser app with no external dependencies
 - SVG F1–F2 map with Japanese vowel reference points
 - English GUI
-- Web Audio API synthesis using:
-  - sawtooth oscillator as the excitation source
-  - two band-pass `BiquadFilterNode` resonators for F1 and F2
-  - gain envelope for attack/release
+- Web Audio API synthesis using:- sawtooth oscillator as the excitation source
+- two band-pass `BiquadFilterNode` resonators for F1 and F2
+- gain envelope for attack/release
 - Pointer Events for mouse, touch, and pen input
 - Audio activation button for browser autoplay policies
 - Visibility-change handling to prevent stuck notes
 
-## Run locally
+## Demo page
 
-Open `index.html` in a modern browser. Press **Enable Audio**, then press and hold the map.
-
-For local development, a static server is recommended, for example:
-
-```sh
-npx serve .
-```
+[Demo in github.io](https://akinori-ito.github.io/synth/index.html)
 
 ## Files
 
@@ -52,3 +45,5 @@ The reference points are illustrative and should not be interpreted as universal
 ## Project name
 
 The planned GitHub repository name is `vowel-space-synth`.
+
+ 
