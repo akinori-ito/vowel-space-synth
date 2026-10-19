@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Formant Synthesizer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>Formant Synthesizer</h1>
+    <p class="hint">Press and hold the map to sustain the selected F1/F2 vowel sound.</p>
+    <section class="panel">
+      <svg id="vowelMap" viewBox="0 0 760 520" role="application" aria-label="F1-F2 vowel map">
+        <rect class="plot" x="70" y="25" width="650" height="430" rx="8"></rect>
+        <g id="grid"></g>
+        <g id="labels"></g>
+        <g id="vowels"></g>
+        <circle id="cursor" class="cursor" cx="395" cy="240" r="10" visibility="hidden"></circle>
+      </svg>
+      <div class="readout"><span id="status">Stopped</span><span>F1: <b id="f1Value">500</b> Hz</span><span>F2: <b id="f2Value">1500</b> Hz</span><span>Vowel: <b id="vowelValue">—</b></span></div>
+    </section>
+    <button id="startButton" type="button">Enable Audio</button>
+    <p class="small">Press the button first to satisfy the browser's autoplay policy.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
