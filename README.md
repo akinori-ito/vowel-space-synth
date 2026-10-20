@@ -11,6 +11,7 @@ An experimental browser-based formant synthesizer. Click and hold anywhere on th
 - two band-pass `BiquadFilterNode` resonators for F1 and F2
 - gain envelope for attack/release
 - Pointer Events for mouse, touch, and pen input
+- Real-time logarithmic frequency spectrum with F1/F2 markers
 - Audio activation button for browser autoplay policies
 - Visibility-change handling to prevent stuck notes
 

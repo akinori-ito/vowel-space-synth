@@ -22,6 +22,11 @@
     </section>
     <button id="startButton" type="button">Enable Audio</button>
     <p class="small">Press the button first to satisfy the browser's autoplay policy.</p>
+    <section class="spectrum-panel" aria-labelledby="spectrumTitle">
+      <h2 id="spectrumTitle">Live Spectrum</h2>
+      <canvas id="spectrum" role="img" aria-label="Real-time frequency spectrum of the synthesized sound"></canvas>
+      <p class="small">Frequency (Hz) / Level (dB). Dashed lines indicate the current F1 and F2 frequencies.</p>
+    </section>
   </main>
   <script src="app.js"></script>
 </body>
