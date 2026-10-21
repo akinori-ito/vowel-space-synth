@@ -8,10 +8,13 @@ An experimental browser-based formant synthesizer. Click and hold anywhere on th
 - SVG F1–F2 map with Japanese vowel reference points
 - English GUI
 - Web Audio API synthesis using:- sawtooth oscillator as the excitation source
-- two band-pass `BiquadFilterNode` resonators for F1 and F2
+- two parallel band-pass `BiquadFilterNode` resonators for F1 and F2
 - gain envelope for attack/release
 - Pointer Events for mouse, touch, and pen input
 - Real-time logarithmic frequency spectrum with F1/F2 markers
+- Adjustable fundamental frequency (F0), from 70 to 300 Hz
+- Five-vowel layout scaling, from 50% to 150% around its centroid
+- Optional real-time jitter and shimmer approximation for the excitation source
 - Audio activation button for browser autoplay policies
 - Visibility-change handling to prevent stuck notes
 

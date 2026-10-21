@@ -5,26 +5,77 @@ const f2Out = document.querySelector('#f2Value');
 const vowelOut = document.querySelector('#vowelValue');
 const statusOut = document.querySelector('#status');
 const startButton = document.querySelector('#startButton');
+const f0Slider = document.querySelector('#f0Slider');
+const f0Out = document.querySelector('#f0Value');
+const spaceSlider = document.querySelector('#spaceSlider');
+const spaceOut = document.querySelector('#spaceValue');
+const perturbationToggle = document.querySelector('#perturbationToggle');
+const perturbationState = document.querySelector('#perturbationState');
 const spectrumCanvas = document.querySelector('#spectrum');
 const spectrumContext = spectrumCanvas.getContext('2d');
 
 const plot = { left: 70, top: 25, width: 650, height: 430 };
 const domain = { f1Min: 200, f1Max: 900, f2Min: 600, f2Max: 2800 };
-const vowels = [
+const baseVowels = [
   { label: '/i/', f1: 300, f2: 2300 }, { label: '/e/', f1: 450, f2: 1900 },
   { label: '/a/', f1: 700, f2: 1200 }, { label: '/o/', f1: 500, f2: 900 },
   { label: '/u/', f1: 350, f2: 1000 }
 ];
-let audioContext, source, f1Filter, f2Filter, outputGain, analyser, spectrumData;
+let audioContext, source, f1Filter, f2Filter, formantBus, outputGain, analyser, spectrumData;
+let jitterNoise, shimmerNoise, jitterDepth, shimmerDepth;
 let pressed = false;
 let currentF1 = 500;
 let currentF2 = 1500;
+let currentF0 = Number(f0Slider.value);
+let spaceScale = Number(spaceSlider.value) / 100;
+
+const vowelCenter = {
+  f1: baseVowels.reduce((sum, vowel) => sum + vowel.f1, 0) / baseVowels.length,
+  f2: baseVowels.reduce((sum, vowel) => sum + vowel.f2, 0) / baseVowels.length
+};
+const scaledVowels = () => baseVowels.map(vowel => ({
+  ...vowel,
+  f1: vowelCenter.f1 + (vowel.f1 - vowelCenter.f1) * spaceScale,
+  f2: vowelCenter.f2 + (vowel.f2 - vowelCenter.f2) * spaceScale
+}));
 
 const xFromF2 = f2 => plot.left + (domain.f2Max - f2) / (domain.f2Max - domain.f2Min) * plot.width;
 const yFromF1 = f1 => plot.top + (f1 - domain.f1Min) / (domain.f1Max - domain.f1Min) * plot.height;
 const f2FromX = x => domain.f2Max - ((x - plot.left) / plot.width) * (domain.f2Max - domain.f2Min);
 const f1FromY = y => domain.f1Min + ((y - plot.top) / plot.height) * (domain.f1Max - domain.f1Min);
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+function createSmoothNoise(context, duration = 4, interval = .012) {
+  const length = Math.ceil(context.sampleRate * duration);
+  const buffer = context.createBuffer(1, length, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  const segmentLength = Math.max(1, Math.round(context.sampleRate * interval));
+  let from = Math.random() * 2 - 1;
+  let to = Math.random() * 2 - 1;
+  for (let i = 0; i < length; i++) {
+    const phase = (i % segmentLength) / segmentLength;
+    const blend = (1 - Math.cos(Math.PI * phase)) / 2;
+    data[i] = from + (to - from) * blend;
+    if ((i + 1) % segmentLength === 0) {
+      from = to;
+      to = Math.random() * 2 - 1;
+    }
+  }
+  const noise = context.createBufferSource();
+  noise.buffer = buffer;
+  noise.loop = true;
+  return noise;
+}
+
+function setPerturbationEnabled(enabled) {
+  perturbationState.textContent = enabled ? 'ON' : 'OFF';
+  if (!audioContext || !jitterDepth || !shimmerDepth) return;
+  const now = audioContext.currentTime;
+  jitterDepth.gain.cancelScheduledValues(now);
+  shimmerDepth.gain.cancelScheduledValues(now);
+  jitterDepth.gain.setTargetAtTime(enabled ? 5 : 0, now, .025);
+  shimmerDepth.gain.setTargetAtTime(enabled ? .015 : 0, now, .025);
+}
 
 function drawMap() {
   const grid = document.querySelector('#grid');
@@ -39,11 +90,16 @@ function drawMap() {
     grid.insertAdjacentHTML('beforeend', `<line class="grid-line" x1="${x}" y1="${plot.top}" x2="${x}" y2="${plot.top + plot.height}"/><text class="tick-label" x="${x}" y="${plot.top + plot.height + 22}" text-anchor="middle">${f2}</text>`);
   }
   labels.innerHTML = `<text class="axis-label" x="${plot.left + plot.width / 2}" y="510" text-anchor="middle">F2 (Hz)   high ←　　　　　　　　　→ low</text><text class="axis-label" transform="translate(18 ${plot.top + plot.height / 2}) rotate(-90)" text-anchor="middle">F1 (Hz)   high ←　　　　　　　　　→ low</text>`;
-  vowelGroup.innerHTML = vowels.map(v => `<circle class="vowel-dot" cx="${xFromF2(v.f2)}" cy="${yFromF1(v.f1)}" r="7"/><text class="vowel-label" x="${xFromF2(v.f2) + 11}" y="${yFromF1(v.f1) + 6}">${v.label}</text>`).join('');
+  drawVowels();
+}
+
+function drawVowels() {
+  const vowelGroup = document.querySelector('#vowels');
+  vowelGroup.innerHTML = scaledVowels().map(v => `<circle class="vowel-dot" cx="${xFromF2(v.f2)}" cy="${yFromF1(v.f1)}" r="7"/><text class="vowel-label" x="${xFromF2(v.f2) + 11}" y="${yFromF1(v.f1) + 6}">${v.label}</text>`).join('');
 }
 
 function nearestVowel(f1, f2) {
-  return vowels.reduce((best, v) => Math.hypot((f1 - v.f1) / 250, (f2 - v.f2) / 700) < best.distance ? { label: v.label, distance: Math.hypot((f1 - v.f1) / 250, (f2 - v.f2) / 700) } : best, { label: '—', distance: Infinity }).label;
+  return scaledVowels().reduce((best, v) => Math.hypot((f1 - v.f1) / 250, (f2 - v.f2) / 700) < best.distance ? { label: v.label, distance: Math.hypot((f1 - v.f1) / 250, (f2 - v.f2) / 700) } : best, { label: '—', distance: Infinity }).label;
 }
 
 function updatePosition(clientX, clientY) {
@@ -61,21 +117,45 @@ function updatePosition(clientX, clientY) {
 function ensureAudio() {
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    source = audioContext.createOscillator(); source.type = 'sawtooth'; source.frequency.value = 125;
+    source = audioContext.createOscillator(); source.type = 'sawtooth'; source.frequency.value = currentF0;
     f1Filter = audioContext.createBiquadFilter(); f1Filter.type = 'bandpass'; f1Filter.Q.value = 8;
     f2Filter = audioContext.createBiquadFilter(); f2Filter.type = 'bandpass'; f2Filter.Q.value = 10;
+    formantBus = audioContext.createGain(); formantBus.gain.value = .75;
     outputGain = audioContext.createGain(); outputGain.gain.value = 0;
+    jitterNoise = createSmoothNoise(audioContext);
+    shimmerNoise = createSmoothNoise(audioContext);
+    jitterDepth = audioContext.createGain(); jitterDepth.gain.value = perturbationToggle.checked ? 5 : 0;
+    shimmerDepth = audioContext.createGain(); shimmerDepth.gain.value = perturbationToggle.checked ? .015 : 0;
     analyser = audioContext.createAnalyser(); analyser.fftSize = 4096; analyser.smoothingTimeConstant = .82; analyser.minDecibels = -100; analyser.maxDecibels = -20;
     spectrumData = new Float32Array(analyser.frequencyBinCount);
-    source.connect(f1Filter).connect(f2Filter).connect(outputGain).connect(analyser).connect(audioContext.destination); source.start();
+    source.connect(f1Filter).connect(formantBus);
+    source.connect(f2Filter).connect(formantBus);
+    jitterNoise.connect(jitterDepth).connect(source.detune);
+    shimmerNoise.connect(shimmerDepth).connect(formantBus.gain);
+    formantBus.connect(outputGain).connect(analyser).connect(audioContext.destination);
+    jitterNoise.start();
+    shimmerNoise.start();
+    source.start();
   }
   if (audioContext.state === 'suspended') audioContext.resume();
 }
 
-function begin(e) { e.preventDefault(); ensureAudio(); svg.setPointerCapture(e.pointerId); pressed = true; updatePosition(e.clientX, e.clientY); const t = audioContext.currentTime; outputGain.gain.cancelScheduledValues(t); outputGain.gain.setTargetAtTime(.16, t, .01); statusOut.textContent = 'Playing'; }
-function end(e) { if (!pressed) return; e.preventDefault(); pressed = false; const t = audioContext.currentTime; outputGain.gain.cancelScheduledValues(t); outputGain.gain.setTargetAtTime(0, t, .04); statusOut.textContent = 'Stopped'; }
+function begin(e) { e.preventDefault(); ensureAudio(); svg.setPointerCapture(e.pointerId); pressed = true; updatePosition(e.clientX, e.clientY); const t = audioContext.currentTime; outputGain.gain.cancelScheduledValues(t); outputGain.gain.setTargetAtTime(.16, t, .01); statusOut.textContent = '再生中'; }
+function end(e) { if (!pressed) return; e.preventDefault(); pressed = false; const t = audioContext.currentTime; outputGain.gain.cancelScheduledValues(t); outputGain.gain.setTargetAtTime(0, t, .04); statusOut.textContent = '停止中'; }
 svg.addEventListener('pointerdown', begin); svg.addEventListener('pointermove', e => { if (pressed) updatePosition(e.clientX, e.clientY); }); svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end); svg.addEventListener('lostpointercapture', end);
-startButton.addEventListener('click', () => { ensureAudio(); startButton.textContent = 'Audio Enabled'; startButton.disabled = true; });
+startButton.addEventListener('click', () => { ensureAudio(); startButton.textContent = '音声は有効です'; startButton.disabled = true; });
+f0Slider.addEventListener('input', () => {
+  currentF0 = Number(f0Slider.value);
+  f0Out.textContent = `${currentF0} Hz`;
+  if (source && audioContext) source.frequency.setTargetAtTime(currentF0, audioContext.currentTime, .015);
+});
+spaceSlider.addEventListener('input', () => {
+  spaceScale = Number(spaceSlider.value) / 100;
+  spaceOut.textContent = `${spaceSlider.value}%`;
+  drawVowels();
+  vowelOut.textContent = nearestVowel(currentF1, currentF2);
+});
+perturbationToggle.addEventListener('change', () => setPerturbationEnabled(perturbationToggle.checked));
 document.addEventListener('visibilitychange', () => { if (document.hidden && pressed) end({ preventDefault() {} }); });
 
 function drawSpectrum() {

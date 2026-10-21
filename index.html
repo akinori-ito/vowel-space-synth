@@ -3,29 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Formant Synthesizer</title>
+  <title>母音フォルマント合成</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main>
-    <h1>Formant Synthesizer</h1>
-    <p class="hint">Press and hold the map to sustain the selected F1/F2 vowel sound.</p>
+    <h1>母音フォルマント合成</h1>
+    <p class="hint">マップを押している間、選んだ F1・F2 の母音を再生します。</p>
+    <section class="controls" aria-label="合成パラメータ">
+      <div class="control">
+        <div class="control-heading"><label for="f0Slider">基本周波数（F0）</label><output id="f0Value" for="f0Slider">125 Hz</output></div>
+        <input id="f0Slider" type="range" min="70" max="300" value="125" step="1">
+        <div class="range-labels" aria-hidden="true"><span>70 Hz（低い声）</span><span>300 Hz（高い声）</span></div>
+      </div>
+      <div class="control">
+        <div class="control-heading"><label for="spaceSlider">5母音の配置</label><output id="spaceValue" for="spaceSlider">100%</output></div>
+        <input id="spaceSlider" type="range" min="50" max="150" value="100" step="1">
+        <div class="range-labels" aria-hidden="true"><span>縮小</span><span>基準</span><span>拡大</span></div>
+      </div>
+      <div class="control toggle-control">
+        <div>
+          <div class="control-heading"><label for="perturbationToggle">声の微細なゆらぎ</label><output id="perturbationState" for="perturbationToggle">OFF</output></div>
+          <p class="control-description">jitter＋shimmerを加えて、自然な声帯振動を近似します。</p>
+        </div>
+        <label class="switch">
+          <input id="perturbationToggle" type="checkbox" role="switch">
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
+      </div>
+      <p class="experiment-note">F0を変えて声の高さを、配置を変えて母音空間の広がりを比較できます。</p>
+    </section>
     <section class="panel">
-      <svg id="vowelMap" viewBox="0 0 760 520" role="application" aria-label="F1-F2 vowel map">
+      <svg id="vowelMap" viewBox="0 0 760 520" role="application" aria-label="F1・F2 母音マップ">
         <rect class="plot" x="70" y="25" width="650" height="430" rx="8"></rect>
-        <g id="grid"></g>
-        <g id="labels"></g>
-        <g id="vowels"></g>
+        <g id="grid"></g><g id="labels"></g><g id="vowels"></g>
         <circle id="cursor" class="cursor" cx="395" cy="240" r="10" visibility="hidden"></circle>
       </svg>
-      <div class="readout"><span id="status">Stopped</span><span>F1: <b id="f1Value">500</b> Hz</span><span>F2: <b id="f2Value">1500</b> Hz</span><span>Vowel: <b id="vowelValue">—</b></span></div>
+      <div class="readout"><span id="status">停止中</span><span>F1: <b id="f1Value">500</b> Hz</span><span>F2: <b id="f2Value">1500</b> Hz</span><span>母音: <b id="vowelValue">—</b></span></div>
     </section>
-    <button id="startButton" type="button">Enable Audio</button>
-    <p class="small">Press the button first to satisfy the browser's autoplay policy.</p>
+    <button id="startButton" type="button">音声を有効にする</button>
+    <p class="small">ブラウザの制限を解除するため、最初にボタンを押してください。</p>
     <section class="spectrum-panel" aria-labelledby="spectrumTitle">
-      <h2 id="spectrumTitle">Live Spectrum</h2>
-      <canvas id="spectrum" role="img" aria-label="Real-time frequency spectrum of the synthesized sound"></canvas>
-      <p class="small">Frequency (Hz) / Level (dB). Dashed lines indicate the current F1 and F2 frequencies.</p>
+      <h2 id="spectrumTitle">リアルタイム・スペクトル</h2>
+      <canvas id="spectrum" role="img" aria-label="合成音のリアルタイム周波数スペクトル"></canvas>
+      <p class="small">横軸：周波数（Hz）／縦軸：レベル（dB）。破線は現在の F1・F2 を示します。</p>
     </section>
   </main>
   <script src="app.js"></script>
